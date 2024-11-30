@@ -1,0 +1,12 @@
+# ignore cash files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# logs
+*.log
+
+#passwords and keys
+.env
+secrets.txt
