@@ -15,7 +15,7 @@ class ChatGptService:
 
     async def send_message_list(self) -> str:
         completion = self.client.chat.completions.create(
-            model="gpt-3.5-turbo",  # gpt-4o,  gpt-4-turbo, gpt-3.5-turbo,  GPT-4o mini
+            model="gpt-4-turbo",  # gpt-4o,  gpt-4-turbo, gpt-3.5-turbo,  GPT-4o mini
             messages=self.message_list,
             max_tokens=3000,
             temperature=0.9
@@ -37,3 +37,22 @@ class ChatGptService:
         self.message_list.append({"role": "system", "content": prompt_text})
         self.message_list.append({"role": "user", "content": message_text})
         return await self.send_message_list()
+
+    async def send_image(self, prompt_text: str, encoded_image: str) -> str:
+        self.message_list.clear()
+        self.message_list.append({"role": "system", "content": prompt_text})
+
+        # Add the image content to the user message
+        self.message_list.append({
+            "role": "user",
+            "content": [
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{encoded_image}"
+                    }
+                }
+            ]
+        })
+        return await self.send_message_list()
+

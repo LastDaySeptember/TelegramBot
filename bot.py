@@ -23,6 +23,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             f"Hello, {update.effective_user.first_name}.Welcome to the telegram bot! {text}")
     else:
         await util.send_text(update, context, text)
+    context.user_data["state"] = "base"
 
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -62,6 +63,7 @@ async def give_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
     ])
     await context.bot.send_message(update.effective_user.id, " What would you like?", reply_markup=markup)
+    context.user_data["state"] = "quiz"
 
 
 async def talk_people(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -76,8 +78,21 @@ async def talk_gpt(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def describe_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await util.send_image(update, context, "eye")
-    pass
+    await util.send_text(update, context, "Send me picture, please")
+    context.user_data["state"] = "image"
 
+async def send_image_gpt(update: Update, context: ContextTypes.DEFAULT_TYPE, photo):
+    prompt = util.load_prompt("image")
+    file_id = photo.file_id
+    photo = await context.bot.get_file(file_id)
+    # Download the photo to a temporary path
+    file_path = "temp/toSend.jpg"
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)  # Ensure directory exists
+    await photo.download_to_drive(custom_path=file_path)
+    base64_photo = await util.encode_image(file_path)
+    message = await util.send_text(update, context, "Sending photo...")
+    answer = await chat_gpt.send_image(prompt, base64_photo)
+    await message.edit_text(answer)
 
 async def find_scene(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await util.send_image(update, context, "scene")
@@ -95,8 +110,23 @@ async def fact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def quiz_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     data = update.callback_query.data
+    topic = data[5:]
 
-    pass
+
+async def image_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message.photo:
+        photo = update.message.photo[1]
+    else:
+        await util.send_text(update, context, "Please, check compresssed image")
+        return
+    if "state" not in context.user_data or context.user_data["state"] != "image":
+        await util.send_text(update, context, "To get the description use /image command, please")
+        context.user_data["state"] = "base"
+        return
+    await send_image_gpt(update, context, photo)
+
+
+
 
 
 def main():
@@ -110,6 +140,8 @@ def main():
     app.add_handler(CommandHandler("scene", find_scene))
 
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+    app.add_handler(MessageHandler(filters.PHOTO | filters.Document.IMAGE, image_handler))
+
 
     app.add_handler(CallbackQueryHandler(fact_handler, '^fact_.*'))
     app.add_handler(CallbackQueryHandler(quiz_handler, '^quiz_.*'))

@@ -3,6 +3,8 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, \
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
+import base64
+import aiofiles
 
 
 # конвертирует объект user в строку
@@ -98,3 +100,9 @@ async def default_callback_handler(update: Update,
 
 class Dialog:
     pass
+
+
+async def encode_image(path):
+    async with aiofiles.open(path, "rb") as image:
+        content = await image.read()
+        return base64.b64encode(content).decode('utf-8')
