@@ -13,16 +13,13 @@ chat_gpt = gpt.ChatGptService(GPT_TOKEN)
 
 # functions
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    # text = update.message.text
     await util.send_image(update, context, "bot")
-    await update.message.reply_text(
-        f"Hello, {update.effective_user.first_name}. \n Welcome to the telegram bot, where you can:\n"
-        f"/fact - get random fact,\n"
-        f"/quiz - get and answer quiz question,\n"
-        f"/talk - talk with interesting characters,\n"
-        f"/gpt - talk with gpt,\n"
-        f"/image - send image to describe it by AI,\n"
-        f"/scene - ask GPT to find scene from movie, close to your description.")
+    text = "You can :\n/fact - get random fact,\n/quiz - get and answer quiz question,\n/talk - talk with interesting characters,\n/gpt - talk with gpt,\n/image - send image to describe it by AI,\n/scene - ask GPT to find scene from movie, close to your description."
+    if update.message:
+        await update.message.reply_text(
+            f"Hello, {update.effective_user.first_name}.Welcome to the telegram bot! {text}")
+    else:
+        await util.send_text(update, context, text)
 
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
