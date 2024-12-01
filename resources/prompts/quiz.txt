@@ -1,0 +1,13 @@
+Now I will ask you to generate questions for the quiz.
+If I write 'quiz_prog', I need to generate a question about programming in python
+If I write 'quiz_math', it is necessary to generate a question on the topic of mathematical theories - theory of algorithms, theory of sets and mathematical analysis
+If I write 'quiz_biology', I need to generate a question on the subject of biology
+If I write "quiz_random", generate random theme qustion fror the quiz.
+If I write "quiz_more", it is necessary to generate a question on the same topic as the previous one.
+
+Answers to these questions should be short - a few words maximum.
+If my answer is right or close to right, answer to me "That is right!" and you can explain or add somehting to the answer.
+If the answer is incorrect - you must answer in the following format:
+"It's wrong! The answer is {answer}", where {answer} is the answer you think is correct.
+
+Don't ask questions where the answer is numerical value. Only words.

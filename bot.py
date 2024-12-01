@@ -2,8 +2,8 @@ import os
 from dotenv import load_dotenv  # Импортируем dotenv для работы с .env файлами
 from utils import gpt, util
 import datetime
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters, CallbackQueryHandler, ConversationHandler
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters, CallbackQueryHandler
 
 # import tokens
 load_dotenv()
@@ -12,13 +12,12 @@ GPT_TOKEN = os.getenv("ChatGPT_TOKEN")
 chat_gpt = gpt.ChatGptService(GPT_TOKEN)
 
 
-# states
-TALK_GPT, TALK_PEOPLE, QUIZ, IMAGE_DESCRIPTION, SCENE_FIND = range(5)
-
 # functions
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await util.send_image(update, context, "bot")
-    text = "You can:\n/fact - get random fact,\n/quiz - get and answer quiz question,\n/talk - talk with interesting characters,\n/gpt - talk with gpt,\n/image - send image to describe it by AI,\n/scene - ask GPT to find scene from movie, close to your description."
+    text = (
+        "You can :\n/fact - get random fact,\n/quiz - get and answer quiz question,\n/talk - talk with interesting characters,\n"
+        "/gpt - talk with gpt,\n/image - get image description,\n/scene - find scene close to your description.")
     if update.message:
         await update.message.reply_text(
             f"Hello, {update.effective_user.first_name}.Welcome to the telegram bot! {text}")
@@ -41,105 +40,81 @@ async def give_random_fact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     markup = InlineKeyboardMarkup([
         [InlineKeyboardButton("Another fact", callback_data="fact_another")],
         [InlineKeyboardButton("Finish", callback_data="fact_finish")]
-        ]
+    ]
     )
     await context.bot.send_message(update.effective_user.id, 'Do you want another one?', reply_markup=markup)
 
 
-
 async def give_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await util.send_image(update, context, "quiz")
+    await util.send_text(update, context, "Let's quiz. I am thinking about the topic.")
+    markup = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("Python", callback_data='quiz_prog'),
+            InlineKeyboardButton("Math", callback_data='quiz_math')
+        ],
+        [
+            InlineKeyboardButton("Biology", callback_data='quiz_bio'),
+            InlineKeyboardButton("Random", callback_data='quiz_rand')
+        ],
+        [
+            InlineKeyboardButton("More", callback_data='quiz_more')
+        ]
+    ])
+    await context.bot.send_message(update.effective_user.id, " What would you like?", reply_markup=markup)
 
 
 async def talk_people(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await util.send_image(update,context, "talk")
+    await util.send_image(update, context, "talk")
+    pass
 
 
 async def talk_gpt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await util.send_image(update, context, "gpt")
-    message = await util.send_text(update, context, "Let's talk.")
+    pass
 
 
 async def describe_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await util.send_image(update, context, "eye")
-    await util.send_text(update, context, "Please, send picture to get the description")
-    return IMAGE_DESCRIPTION
+    pass
 
 
 async def find_scene(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await util.send_image(update, context, "film")
-    await util.send_text(update, context, "Describe the scene you want to see:")
+    await util.send_image(update, context, "scene")
+    pass
 
-
+# callback handlers
 async def fact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     data = update.callback_query.data
-    print(data)
     if "another" in data:
         await give_random_fact(update, context)
     else:
         await start(update, context)
 
+async def quiz_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    data = update.callback_query.data
 
-async def image_description(update: Update, context: ContextTypes.DEFAULT_TYPE):
     pass
+
 
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
-    conv_handler_talk = ConversationHandler(
-        entry_points = [CommandHandler("talk", talk_people)],
-        states={
-            TALK_PEOPLE:[CommandHandler("talk", talk_people)],
-        },
-        fallbacks=[CommandHandler("start", start)],
-    )
-
-    conv_handler_gpt = ConversationHandler(
-        entry_points = [CommandHandler("gpt", talk_gpt)],
-        states={
-            TALK_GPT:[CommandHandler("gpt", talk_gpt)],
-        },
-        fallbacks=[CommandHandler("start", start)],
-    )
-
-    conv_handler_quiz = ConversationHandler(
-        entry_points = [CommandHandler("quiz", give_quiz)],
-        states={
-            QUIZ:[CommandHandler("quiz", give_quiz)],
-        },
-        fallbacks=[CommandHandler("start", start)],
-    )
-
-    conv_handler_image = ConversationHandler(
-        entry_points = [CommandHandler("image", describe_image)],
-        states={
-            IMAGE_DESCRIPTION:[CommandHandler("image", describe_image)],
-        },
-        fallbacks=[CommandHandler("start", start)],
-    )
-
-
-    conv_handler_scene= ConversationHandler(
-        entry_points = [CommandHandler("scene", find_scene)],
-        states={
-            SCENE_FIND:[CommandHandler("scene", find_scene)],
-        },
-        fallbacks=[CommandHandler("start", start)],
-    )
-
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("fact", give_random_fact))
+    app.add_handler(CommandHandler("quiz", give_quiz))
+    app.add_handler(CommandHandler("talk", talk_people))
+    app.add_handler(CommandHandler("gpt", talk_gpt))
+    app.add_handler(CommandHandler("image", describe_image))
+    app.add_handler(CommandHandler("scene", find_scene))
 
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
-    app.add_handler(MessageHandler(filters.PHOTO, image_description))
 
     app.add_handler(CallbackQueryHandler(fact_handler, '^fact_.*'))
+    app.add_handler(CallbackQueryHandler(quiz_handler, '^quiz_.*'))
 
     # run app
-    app.add_handler(conv_handler_talk)
-    app.add_handler(conv_handler_gpt)
-    app.add_handler(conv_handler_quiz)
-    app.add_handler(conv_handler_image)
-    app.add_handler(conv_handler_scene)
     app.run_polling()
 
 
