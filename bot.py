@@ -32,6 +32,10 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         f"You have written '{text}' at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
 
+
+
+
+
 async def give_random_fact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await util.send_image(update, context, "random")
     message = await util.send_text(update, context, "Thinking...")
@@ -81,6 +85,7 @@ async def describe_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await util.send_text(update, context, "Send me picture, please")
     context.user_data["state"] = "image"
 
+
 async def send_image_gpt(update: Update, context: ContextTypes.DEFAULT_TYPE, photo):
     prompt = util.load_prompt("image")
     file_id = photo.file_id
@@ -93,10 +98,31 @@ async def send_image_gpt(update: Update, context: ContextTypes.DEFAULT_TYPE, pho
     message = await util.send_text(update, context, "Sending photo...")
     answer = await chat_gpt.send_image(prompt, base64_photo)
     await message.edit_text(answer)
+    markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton("Finish", callback_data="fact_finish")]
+    ]
+    )
+    await context.bot.send_message(update.effective_user.id, 'Attach new image for description or finish this function',
+                                   reply_markup=markup)
+
 
 async def find_scene(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await util.send_image(update, context, "scene")
-    pass
+    await util.send_text(update, context, "Describe your scene")
+    context.user_data["state"] = "scene"
+
+
+async def send_scene_description_gpt(update: Update, context: ContextTypes.DEFAULT_TYPE, text):
+    prompt = util.load_prompt("scene")
+    message = await util.send_text(update, context, "Sending description of a scene")
+    answer = await chat_gpt.send_question(prompt, text)
+    await message.edit_text(answer)
+    markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton("Finish", callback_data="fact_finish")]
+    ]
+    )
+    await context.bot.send_message(update.effective_user.id, 'Describe another scene or finish interaction', reply_markup=markup)
+
 
 # callback handlers
 async def fact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -106,6 +132,7 @@ async def fact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await give_random_fact(update, context)
     else:
         await start(update, context)
+
 
 async def quiz_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -125,8 +152,12 @@ async def image_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await send_image_gpt(update, context, photo)
 
-
-
+async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text
+    if not context.user_data["state"]:
+        context.user_data["state"] = "base"
+    if context.user_data["state"] == "scene":
+        return await send_scene_description_gpt(update, context, text)
 
 
 def main():
@@ -139,9 +170,9 @@ def main():
     app.add_handler(CommandHandler("image", describe_image))
     app.add_handler(CommandHandler("scene", find_scene))
 
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+    # app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
     app.add_handler(MessageHandler(filters.PHOTO | filters.Document.IMAGE, image_handler))
-
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
 
     app.add_handler(CallbackQueryHandler(fact_handler, '^fact_.*'))
     app.add_handler(CallbackQueryHandler(quiz_handler, '^quiz_.*'))

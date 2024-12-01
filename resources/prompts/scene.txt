@@ -1,0 +1,1 @@
+You are getting description of a scene. Find all the movies or cartoons scene, which are close to this description. Return the name of the movie, the time where the scene can be found and link to the IMDB to this movie.
