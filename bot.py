@@ -11,9 +11,9 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 GPT_TOKEN = os.getenv("ChatGPT_TOKEN")
 chat_gpt = gpt.ChatGptService(GPT_TOKEN)
 
-
 # functions
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    context.user_data["state"] = "base"
     await util.send_image(update, context, "bot")
     text = (
         "You can :\n/fact - get random fact,\n/quiz - get and answer quiz question,\n/talk - talk with interesting characters,\n"
@@ -23,16 +23,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             f"Hello, {update.effective_user.first_name}.Welcome to the telegram bot! {text}")
     else:
         await util.send_text(update, context, text)
-    context.user_data["state"] = "base"
 
 
-async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    text = update.message.text
+
+async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    await start(update, context)
+
+
+async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str) -> None:
     await update.message.reply_text(
         f"You have written '{text}' at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
 
 async def give_random_fact(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["state"] = "random_fact"
     await util.send_image(update, context, "random")
     message = await util.send_text(update, context, "Thinking...")
     prompt = util.load_prompt("random")
@@ -72,8 +77,13 @@ async def talk_people(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def talk_gpt(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await util.send_image(update, context, "gpt")
-    pass
+    context.user_data["state"] = "gpt"
+    text = util.load_message('gpt')
+    prompt = util.load_prompt("gpt")
+    chat_gpt.set_prompt(prompt)
+    await util.send_image(update, context, 'gpt')
+    await util.send_text(update, context, text)
+
 
 
 async def describe_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -114,19 +124,17 @@ async def send_scene_description_gpt(update: Update, context: ContextTypes.DEFAU
     answer = await chat_gpt.send_question(prompt, text)
     await message.edit_text(answer)
     markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("Finish", callback_data="fact_finish")]
+        [InlineKeyboardButton("Finish", callback_data="stop")]
     ]
     )
     await context.bot.send_message(update.effective_user.id, 'Describe another scene or finish interaction',
                                    reply_markup=markup)
-
 
 # callback handlers
 async def fact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     data = update.callback_query.data
     await give_random_fact(update, context)
-
 
 
 async def quiz_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -148,17 +156,36 @@ async def image_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await send_image_gpt(update, context, photo)
 
 
+
+
+
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
-    if not context.user_data["state"]:
+    if "state" not in context.user_data:
         context.user_data["state"] = "base"
-    if context.user_data["state"] == "scene":
-        return await send_scene_description_gpt(update, context, text)
+    match context.user_data["state"]:
+        case "base":
+            # return await echo(update, context, text)
+            return await start(update, context)
+        case "scene":
+            return await send_scene_description_gpt(update, context, text)
+        case "gpt":
+            return await gpt_dialog(update, context, text)
+
+async def gpt_dialog(update: Update, context: ContextTypes.DEFAULT_TYPE, request: str):
+    answer = await chat_gpt.add_message(request)
+    message = await util.send_text(update, context,f"Thinking about the answer to your question: {request}")
+    await message.edit_text(answer)
+    markup = InlineKeyboardMarkup(
+        [[
+            InlineKeyboardButton("Finish", callback_data="stop")
+        ]]
+    )
+    await context.bot.send_message(update.effective_user.id, 'Give me another question or stop the conversation.',
+                                   reply_markup=markup)
 
 
-async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.answer()
-    await start(update, context)
+
 
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
