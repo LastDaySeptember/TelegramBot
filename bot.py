@@ -32,10 +32,6 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         f"You have written '{text}' at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
 
-
-
-
-
 async def give_random_fact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await util.send_image(update, context, "random")
     message = await util.send_text(update, context, "Thinking...")
@@ -44,7 +40,7 @@ async def give_random_fact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await message.edit_text(answer)
     markup = InlineKeyboardMarkup([
         [InlineKeyboardButton("Another fact", callback_data="fact_another")],
-        [InlineKeyboardButton("Finish", callback_data="fact_finish")]
+        [InlineKeyboardButton("Finish", callback_data="stop")]
     ]
     )
     await context.bot.send_message(update.effective_user.id, 'Do you want another one?', reply_markup=markup)
@@ -121,17 +117,16 @@ async def send_scene_description_gpt(update: Update, context: ContextTypes.DEFAU
         [InlineKeyboardButton("Finish", callback_data="fact_finish")]
     ]
     )
-    await context.bot.send_message(update.effective_user.id, 'Describe another scene or finish interaction', reply_markup=markup)
+    await context.bot.send_message(update.effective_user.id, 'Describe another scene or finish interaction',
+                                   reply_markup=markup)
 
 
 # callback handlers
 async def fact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     data = update.callback_query.data
-    if "another" in data:
-        await give_random_fact(update, context)
-    else:
-        await start(update, context)
+    await give_random_fact(update, context)
+
 
 
 async def quiz_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -152,6 +147,7 @@ async def image_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await send_image_gpt(update, context, photo)
 
+
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     if not context.user_data["state"]:
@@ -160,8 +156,13 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await send_scene_description_gpt(update, context, text)
 
 
+async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    await start(update, context)
+
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
+
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("fact", give_random_fact))
     app.add_handler(CommandHandler("quiz", give_quiz))
@@ -175,6 +176,7 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
 
     app.add_handler(CallbackQueryHandler(fact_handler, '^fact_.*'))
+    app.add_handler(CallbackQueryHandler(stop, 'stop'))
     app.add_handler(CallbackQueryHandler(quiz_handler, '^quiz_.*'))
 
     # run app
