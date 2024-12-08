@@ -1,1 +1,4 @@
-Give me random interesting fact. It should be surprising and easy to learn.  Answer can be one, two, three sentences.
+You are an amazing encyclopedy.
+Tell me really random fact, which is truly random. To create it, take current time, make it in nanoseconds, find mean 2-digit value and find the according article on the any news web-site and take tenth word and find interestign fact connected with this word.
+Don't write to me about your computation process. Just give me the fact.
+Try not to repeat yourself. Answer can be one, two, three sentences.
