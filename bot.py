@@ -7,6 +7,14 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, Messa
     CallbackQueryHandler, ConversationHandler
 from warnings import filterwarnings
 from telegram.warnings import PTBUserWarning
+import logging
+
+logging.basicConfig(level=logging.DEBUG, format="{asctime} - {levelname} - {message}",
+                    style="{",
+                    datefmt="%Y-%m-%d %H:%M",
+                    filename="temp/app.log",
+                    encoding="utf-8",
+                    filemode="a")
 
 filterwarnings(action="ignore", message=r".*CallbackQueryHandler", category=PTBUserWarning)
 

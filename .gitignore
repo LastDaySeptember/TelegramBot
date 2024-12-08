@@ -10,3 +10,7 @@ __pycache__/
 #passwords and keys
 .env
 secrets.txt
+
+
+#temp
+temp/
