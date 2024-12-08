@@ -195,19 +195,19 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         case "gpt":
             return await gpt_dialog(update, context, text)
         case "talk":
-            return await talk(update, context, text)
+            return await gpt_dialog(update, context, text)
 
 
 async def gpt_dialog(update: Update, context: ContextTypes.DEFAULT_TYPE, request: str):
+    message = await util.send_text(update, context, f"Thinking about the answer to your question")
     answer = await chat_gpt.add_message(request)
-    message = await util.send_text(update, context, f"Thinking about the answer to your question: {request}")
     await message.edit_text(answer)
     markup = InlineKeyboardMarkup(
         [[
             InlineKeyboardButton("Finish", callback_data="stop")
         ]]
     )
-    await context.bot.send_message(update.effective_user.id, 'Give me another question or stop the conversation.',
+    await context.bot.send_message(update.effective_user.id, "Want to finish the conversation?",
                                    reply_markup=markup)
 
 
