@@ -11,6 +11,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 GPT_TOKEN = os.getenv("ChatGPT_TOKEN")
 chat_gpt = gpt.ChatGptService(GPT_TOKEN)
 
+
 # functions
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     context.user_data["state"] = "base"
@@ -23,7 +24,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             f"Hello, {update.effective_user.first_name}.Welcome to the telegram bot! {text}")
     else:
         await util.send_text(update, context, text)
-
 
 
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -72,8 +72,23 @@ async def give_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def talk_people(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['state'] = 'talk'
     await util.send_image(update, context, "talk")
-    pass
+    message = util.load_message("talk")
+    await util.send_text(update, context, message)
+    markup = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("Shroedinger's cat", callback_data="talk_cat"),
+            InlineKeyboardButton("Sad fridge", callback_data="talk_fridge")
+        ],
+        [
+            InlineKeyboardButton("Python's Snake", callback_data="talk_snake")
+        ]
+    ])
+    await context.bot.send_message(update.effective_user.id, 'Choose your character', reply_markup=markup)
+
+
+
 
 
 async def talk_gpt(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -83,7 +98,6 @@ async def talk_gpt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_gpt.set_prompt(prompt)
     await util.send_image(update, context, 'gpt')
     await util.send_text(update, context, text)
-
 
 
 async def describe_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -130,6 +144,7 @@ async def send_scene_description_gpt(update: Update, context: ContextTypes.DEFAU
     await context.bot.send_message(update.effective_user.id, 'Describe another scene or finish interaction',
                                    reply_markup=markup)
 
+
 # callback handlers
 async def fact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -155,6 +170,14 @@ async def image_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await send_image_gpt(update, context, photo)
 
+async def talk_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    data = update.callback_query.data
+    prompt = util.load_prompt(data)
+    chat_gpt.set_prompt(prompt)
+    await util.send_image(update, context, data)
+    answer = await chat_gpt.add_message("Say hi from the name of your character")
+    await util.send_text(update, context, answer)
 
 
 
@@ -171,10 +194,13 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return await send_scene_description_gpt(update, context, text)
         case "gpt":
             return await gpt_dialog(update, context, text)
+        case "talk":
+            return await talk(update, context, text)
+
 
 async def gpt_dialog(update: Update, context: ContextTypes.DEFAULT_TYPE, request: str):
     answer = await chat_gpt.add_message(request)
-    message = await util.send_text(update, context,f"Thinking about the answer to your question: {request}")
+    message = await util.send_text(update, context, f"Thinking about the answer to your question: {request}")
     await message.edit_text(answer)
     markup = InlineKeyboardMarkup(
         [[
@@ -183,8 +209,6 @@ async def gpt_dialog(update: Update, context: ContextTypes.DEFAULT_TYPE, request
     )
     await context.bot.send_message(update.effective_user.id, 'Give me another question or stop the conversation.',
                                    reply_markup=markup)
-
-
 
 
 def main():
@@ -205,6 +229,7 @@ def main():
     app.add_handler(CallbackQueryHandler(fact_handler, '^fact_.*'))
     app.add_handler(CallbackQueryHandler(stop, 'stop'))
     app.add_handler(CallbackQueryHandler(quiz_handler, '^quiz_.*'))
+    app.add_handler(CallbackQueryHandler(talk_button, '^talk_.*'))
 
     # run app
     app.run_polling()
